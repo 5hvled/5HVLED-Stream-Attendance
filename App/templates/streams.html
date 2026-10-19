@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Streams — {{ brand_name }} Attendance{% endblock %}
+{% block content %}
+<section class="hero">
+    <div><div class="eyebrow">SESSION ARCHIVE</div><h1>Streams</h1></div>
+</section>
+
+<section class="card">
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Session</th><th>Started</th><th>Ended</th><th>Present</th><th>Absent</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for s in streams %}
+                <tr>
+                    <td><a href="{{ url_for('stream_detail', stream_id=s.id) }}">{{ s.name }}</a></td>
+                    <td>{{ s.started_at }}</td>
+                    <td>{{ s.ended_at or '—' }}</td>
+                    <td>{{ s.present_count or 0 }}</td>
+                    <td>{{ s.absent_count or 0 }}</td>
+                    <td>{% if s.is_open %}<span class="badge green">OPEN</span>{% else %}<span class="badge">CLOSED</span>{% endif %}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6" class="muted">No streams yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
