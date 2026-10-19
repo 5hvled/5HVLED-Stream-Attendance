@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ brand_name }} Attendance{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div>
+            <div class="eyebrow">STREAM ATTENDANCE AUTHORITY</div>
+            <a class="brand" href="{{ url_for('dashboard') }}">{{ brand_name }}</a>
+        </div>
+        <nav>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('viewers') }}">Viewers</a>
+            <a href="{{ url_for('streams') }}">Streams</a>
+            <a href="{{ url_for('audit_page') }}">Audit Log</a>
+        </nav>
+    </header>
+
+    <main class="shell">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-wrap">
+                    {% for message in messages %}
+                        <div class="flash">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+    (() => {
+        const REFRESH_INTERVAL_MS = 1000;
+        let refreshInFlight = false;
+        let timer = null;
+
+        function makeLiveUrl() {
+            const url = new URL(window.location.href);
+            url.searchParams.set("_5hvled_live", Date.now().toString());
+            return url.toString();
+        }
+
+        function captureFocusedControl() {
+            const active = document.activeElement;
+            const main = document.querySelector("main.shell");
+
+            if (!active || !main || !main.contains(active)) return null;
+            if (!active.matches("input, textarea, select, [contenteditable='true']")) return null;
+
+            const controls = Array.from(
+                main.querySelectorAll("input, textarea, select, [contenteditable='true']")
+            );
+
+            return {
+                index: controls.indexOf(active),
+                tag: active.tagName,
+                type: active.type || "",
+                value: "value" in active ? active.value : active.textContent,
+                checked: !!active.checked,
+                selectionStart:
+                    typeof active.selectionStart === "number" ? active.selectionStart : null,
+                selectionEnd:
+                    typeof active.selectionEnd === "number" ? active.selectionEnd : null
+            };
+        }
+
+        function restoreFocusedControl(saved) {
+            if (!saved || saved.index < 0) return;
+
+            const main = document.querySelector("main.shell");
+            if (!main) return;
+
+            const controls = Array.from(
+                main.querySelectorAll("input, textarea, select, [contenteditable='true']")
+            );
+            const control = controls[saved.index];
+
+            if (!control || control.tagName !== saved.tag) return;
+
+            if ("value" in control) {
+                control.value = saved.value;
+            } else if (control.isContentEditable) {
+                control.textContent = saved.value;
+            }
+
+            if (saved.type === "checkbox" || saved.type === "radio") {
+                control.checked = saved.checked;
+            }
+
+            control.focus({ preventScroll: true });
+
+            if (
+                saved.selectionStart !== null &&
+                saved.selectionEnd !== null &&
+                typeof control.setSelectionRange === "function"
+            ) {
+                try {
+                    control.setSelectionRange(saved.selectionStart, saved.selectionEnd);
+                } catch (_) {}
+            }
+        }
+
+        async function refreshVisiblePageData() {
+            if (document.visibilityState !== "visible" || refreshInFlight) return;
+
+            refreshInFlight = true;
+
+            const scrollX = window.scrollX;
+            const scrollY = window.scrollY;
+            const focusedControl = captureFocusedControl();
+
+            try {
+                const response = await fetch(makeLiveUrl(), {
+                    method: "GET",
+                    cache: "no-store",
+                    credentials: "same-origin",
+                    headers: {
+                        "Cache-Control": "no-cache",
+                        "Pragma": "no-cache",
+                        "X-5HVLED-Live-Refresh": "1"
+                    }
+                });
+
+                if (!response.ok) return;
+
+                const html = await response.text();
+                const nextDocument = new DOMParser().parseFromString(html, "text/html");
+
+                const nextMain = nextDocument.querySelector("main.shell");
+                const currentMain = document.querySelector("main.shell");
+
+                if (!nextMain || !currentMain) return;
+
+                currentMain.innerHTML = nextMain.innerHTML;
+
+                if (nextDocument.title) {
+                    document.title = nextDocument.title;
+                }
+
+                restoreFocusedControl(focusedControl);
+                requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
+            } catch (error) {
+                console.debug("[{{ brand_name }} Attendance] Live refresh retrying...", error);
+            } finally {
+                refreshInFlight = false;
+            }
+        }
+
+        function startLiveRefresh() {
+            if (timer !== null) return;
+            refreshVisiblePageData();
+            timer = window.setInterval(refreshVisiblePageData, REFRESH_INTERVAL_MS);
+        }
+
+        function stopLiveRefresh() {
+            if (timer === null) return;
+            window.clearInterval(timer);
+            timer = null;
+        }
+
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+                startLiveRefresh();
+            } else {
+                stopLiveRefresh();
+            }
+        });
+
+        window.addEventListener("pageshow", () => {
+            if (document.visibilityState === "visible") {
+                startLiveRefresh();
+            }
+        });
+
+        startLiveRefresh();
+    })();
+    </script>
+</body>
+</html>
