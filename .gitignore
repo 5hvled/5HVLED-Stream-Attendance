@@ -1,0 +1,19 @@
+# Runtime / user data
+attendance.db
+credits-data/
+end-credits.txt
+config.json
+.venv/
+__pycache__/
+*.pyc
+
+# Backups / temporary files
+*.bak
+*.tmp
+*.log
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
