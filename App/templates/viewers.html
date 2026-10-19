@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Viewers — {{ brand_name }} Attendance{% endblock %}
+{% block content %}
+<section class="hero">
+    <div>
+        <div class="eyebrow">STUDENT DATABASE 💀</div>
+        <h1>Viewers</h1>
+    </div>
+</section>
+
+<section class="grid two">
+    <div class="card">
+        <div class="eyebrow">SEARCH</div>
+        <form class="inline-form" method="get">
+            <input name="q" value="{{ q }}" placeholder="Search username...">
+            <button class="btn" type="submit">Search</button>
+        </form>
+    </div>
+    <div class="card">
+        <div class="eyebrow">MANUAL ENROLLMENT</div>
+        <form class="inline-form" method="post" action="{{ url_for('add_viewer') }}">
+            <input name="username" placeholder="Twitch username" required>
+            <input name="display_name" placeholder="Display name">
+            <button class="btn primary" type="submit">Add Viewer</button>
+        </form>
+    </div>
+</section>
+
+<section class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Viewer</th><th>Present</th><th>Absent</th><th>Rate</th><th>Punishments</th><th>Tracking</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for v in viewers %}
+                <tr>
+                    <td><a href="{{ url_for('viewer_detail', viewer_id=v.id) }}">@{{ v.username }}</a></td>
+                    <td>{{ v.present }}</td>
+                    <td>{% if v.eligible %}<span class="badge red">{{ v.absent }}</span>{% else %}{{ v.absent }}{% endif %}</td>
+                    <td>{{ v.rate }}%</td>
+                    <td>{{ v.punishment_count }}</td>
+                    <td>{% if v.tracked %}<span class="badge green">TRACKED</span>{% else %}<span class="badge">EXCLUDED</span>{% endif %}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6" class="muted">No viewers yet. Start a session and let chat cook.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
