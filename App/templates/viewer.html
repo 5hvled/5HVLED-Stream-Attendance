@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}@{{ viewer.username }} — {{ brand_name }} Attendance{% endblock %}
+{% block content %}
+<section class="hero">
+    <div>
+        <div class="eyebrow">VIEWER RECORD</div>
+        <h1>@{{ viewer.username }}</h1>
+        <p class="muted">{{ viewer.display_name }}</p>
+    </div>
+    {% if viewer.eligible %}
+        <div class="live-pill">🚨 TIMEOUT ELIGIBLE</div>
+    {% else %}
+        <div class="off-pill">{{ viewer.absent }}/{{ viewer.next_threshold }} ABSENCES</div>
+    {% endif %}
+</section>
+
+<section class="stats">
+    <div class="card stat"><span>Present</span><strong>{{ viewer.present }}</strong></div>
+    <div class="card stat"><span>Absent</span><strong>{{ viewer.absent }}</strong></div>
+    <div class="card stat"><span>Attendance Rate</span><strong>{{ viewer.rate }}%</strong></div>
+    <div class="card stat"><span>Punishments</span><strong>{{ viewer.punishment_count }}</strong></div>
+</section>
+
+<section class="grid two">
+    <div class="card">
+        <div class="eyebrow">MANUAL COUNTERS</div>
+        <h2>Edit totals</h2>
+        <div class="counter-row">
+            <span>Present</span>
+            <form method="post" action="{{ url_for('adjust_viewer', viewer_id=viewer.id) }}">
+                <input type="hidden" name="field" value="present"><input type="hidden" name="amount" value="-1">
+                <button class="mini" type="submit">−1</button>
+            </form>
+            <strong>{{ viewer.present }}</strong>
+            <form method="post" action="{{ url_for('adjust_viewer', viewer_id=viewer.id) }}">
+                <input type="hidden" name="field" value="present"><input type="hidden" name="amount" value="1">
+                <button class="mini" type="submit">+1</button>
+            </form>
+        </div>
+        <div class="counter-row">
+            <span>Absent</span>
+            <form method="post" action="{{ url_for('adjust_viewer', viewer_id=viewer.id) }}">
+                <input type="hidden" name="field" value="absent"><input type="hidden" name="amount" value="-1">
+                <button class="mini" type="submit">−1</button>
+            </form>
+            <strong>{{ viewer.absent }}</strong>
+            <form method="post" action="{{ url_for('adjust_viewer', viewer_id=viewer.id) }}">
+                <input type="hidden" name="field" value="absent"><input type="hidden" name="amount" value="1">
+                <button class="mini" type="submit">+1</button>
+            </form>
+        </div>
+        <p class="muted small">Counter adjustments do not delete the per-stream history.</p>
+
+        <div class="row-actions">
+            <form method="post" action="{{ url_for('reset_viewer', viewer_id=viewer.id, kind='absences') }}" onsubmit="return confirm('Reset displayed absences to 0? Stream history stays saved.')">
+                <button class="btn" type="submit">Reset Absences</button>
+            </form>
+            <form method="post" action="{{ url_for('reset_viewer', viewer_id=viewer.id, kind='presents') }}" onsubmit="return confirm('Reset displayed presents to 0? Stream history stays saved.')">
+                <button class="btn" type="submit">Reset Presents</button>
+            </form>
+            <form method="post" action="{{ url_for('reset_viewer', viewer_id=viewer.id, kind='punishments') }}" onsubmit="return confirm('Delete punishment history?')">
+                <button class="btn" type="submit">Reset Punishments</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="eyebrow">DISCIPLINARY ACTION</div>
+        <h2>Timeout milestone</h2>
+        <p>Next punishment threshold: <strong>{{ viewer.next_threshold }} absences</strong></p>
+        <p>Current displayed absences: <strong>{{ viewer.absent }}</strong></p>
+        <form method="post" action="{{ url_for('punish_viewer', viewer_id=viewer.id) }}">
+            <input name="note" placeholder="Optional note">
+            <button class="btn danger" type="submit">Record Timeout / Punishment 💀</button>
+        </form>
+        <p class="muted small">This version records the punishment. Twitch timeout automation can be connected in Streamer.bot next.</p>
+    </div>
+</section>
+
+<section class="grid two">
+    <div class="card">
+        <div class="eyebrow">PROFILE</div>
+        <form class="stack" method="post" action="{{ url_for('edit_viewer', viewer_id=viewer.id) }}">
+            <label>Username</label><input name="username" value="{{ viewer.username }}" required>
+            <label>Display name</label><input name="display_name" value="{{ viewer.display_name or '' }}">
+            <label>Twitch user ID</label><input name="twitch_id" value="{{ viewer.twitch_id or '' }}">
+            <label>Notes</label><textarea name="notes" rows="4">{{ viewer.notes }}</textarea>
+            <label class="check"><input type="checkbox" name="tracked" {% if viewer.tracked %}checked{% endif %}> Include in future attendance tracking</label>
+            <button class="btn primary" type="submit">Save Viewer</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="eyebrow">DANGER</div>
+        <h2>Administrative override</h2>
+        <form method="post" action="{{ url_for('reset_viewer', viewer_id=viewer.id, kind='all') }}" onsubmit="return confirm('Reset ALL displayed counters and punishment history? Stream history stays saved.')">
+            <button class="btn danger" type="submit">Reset All Counters</button>
+        </form>
+        <br>
+        <form method="post" action="{{ url_for('delete_viewer', viewer_id=viewer.id) }}" onsubmit="return confirm('PERMANENTLY delete this viewer and their stream history?')">
+            <button class="btn danger outline" type="submit">Delete Viewer Permanently</button>
+        </form>
+    </div>
+</section>
+
+<section class="card">
+    <div class="section-head">
+        <div><div class="eyebrow">PERMANENT RECORD</div><h2>Stream History</h2></div>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Stream</th><th>Date</th><th>Status</th><th>Source</th></tr></thead>
+            <tbody>
+            {% for h in history %}
+                <tr>
+                    <td><a href="{{ url_for('stream_detail', stream_id=h.stream_id) }}">{{ h.name }}</a></td>
+                    <td>{{ h.started_at }}</td>
+                    <td>{% if h.status == 'present' %}<span class="badge green">PRESENT</span>{% else %}<span class="badge red">ABSENT</span>{% endif %}</td>
+                    <td>{{ h.source }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="4" class="muted">No stream records yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{% if punishments %}
+<section class="card">
+    <div class="eyebrow">DISCIPLINARY HISTORY</div>
+    <h2>Punishments</h2>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>#</th><th>Threshold</th><th>Date</th><th>Note</th></tr></thead>
+            <tbody>
+            {% for p in punishments %}
+                <tr><td>{{ loop.revindex }}</td><td>{{ p.absence_threshold }} absences</td><td>{{ p.punished_at }}</td><td>{{ p.note }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
