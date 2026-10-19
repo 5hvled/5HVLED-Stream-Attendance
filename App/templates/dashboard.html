@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — {{ brand_name }} Attendance{% endblock %}
+{% block content %}
+<section class="hero">
+    <div>
+        <div class="eyebrow">ACADEMIC CONTROL PANEL 💀</div>
+        <h1>Attendance Dashboard</h1>
+        <p class="muted">Permanent history. Manual overrides. Questionable disciplinary policy.</p>
+    </div>
+    {% if open_stream %}
+        <div class="live-pill">● LIVE ATTENDANCE</div>
+    {% else %}
+        <div class="off-pill">NO OPEN SESSION</div>
+    {% endif %}
+</section>
+
+<section class="stats">
+    <div class="card stat">
+        <span>Total Viewers</span>
+        <strong>{{ total_viewers }}</strong>
+    </div>
+    <div class="card stat">
+        <span>Tracked</span>
+        <strong>{{ tracked_viewers }}</strong>
+    </div>
+    <div class="card stat">
+        <span>Present This Stream</span>
+        <strong>{{ current_present }}</strong>
+    </div>
+    <div class="card stat danger-stat">
+        <span>Detention List</span>
+        <strong>{{ detention|length }}</strong>
+    </div>
+</section>
+
+<section class="grid two">
+    <div class="card">
+        <div class="section-head">
+            <div>
+                <div class="eyebrow">CURRENT SESSION</div>
+                <h2>{% if open_stream %}{{ open_stream.name }}{% else %}No active stream{% endif %}</h2>
+            </div>
+        </div>
+
+        {% if open_stream %}
+            <p class="muted">Started {{ open_stream.started_at }}</p>
+            <div class="row-actions">
+                <a class="btn" href="{{ url_for('stream_detail', stream_id=open_stream.id) }}">Open Session</a>
+                <form method="post" action="{{ url_for('close_stream', stream_id=open_stream.id) }}" onsubmit="return confirm('Close this stream and mark every missing tracked viewer absent?')">
+                    <button class="btn danger" type="submit">Close Stream + Count Absences</button>
+                </form>
+            </div>
+        {% else %}
+            <form class="stack" method="post" action="{{ url_for('start_stream') }}">
+                <label>Session name</label>
+                <input name="name" placeholder="e.g. Sunday Stream — Oct 19">
+                <button class="btn primary" type="submit">Start Attendance Session</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="eyebrow">FAST CHECK-IN API</div>
+        <h2>Streamer.bot endpoint</h2>
+        <code>POST http://127.0.0.1:6767/api/check-in</code>
+        <p class="muted small">Send at least <code>{"username":"viewername"}</code>. Twitch ID and display name are optional.</p>
+    </div>
+</section>
+
+<section class="grid two">
+    <div class="card">
+        <div class="section-head">
+            <div>
+                <div class="eyebrow">DISCIPLINARY REVIEW</div>
+                <h2>🚨 Detention</h2>
+            </div>
+        </div>
+        {% if detention %}
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Viewer</th><th>Absences</th><th>Next Mark</th></tr></thead>
+                    <tbody>
+                    {% for v in detention %}
+                        <tr>
+                            <td><a href="{{ url_for('viewer_detail', viewer_id=v.id) }}">@{{ v.username }}</a></td>
+                            <td><span class="badge red">{{ v.absent }}</span></td>
+                            <td>{{ v.next_threshold }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="muted">Nobody is currently timeout eligible. Miraculous.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="eyebrow">DANGER ZONE</div>
+        <h2>Approaching Timeout</h2>
+        {% if danger %}
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Viewer</th><th>Absences</th><th>Until Timeout</th></tr></thead>
+                    <tbody>
+                    {% for v in danger %}
+                        <tr>
+                            <td><a href="{{ url_for('viewer_detail', viewer_id=v.id) }}">@{{ v.username }}</a></td>
+                            <td>{{ v.absent }}/{{ v.next_threshold }}</td>
+                            <td>{{ v.next_threshold - v.absent }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="muted">No one is near the next threshold.</p>
+        {% endif %}
+    </div>
+</section>
+
+<section class="card">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">RECENT RECORDS</div>
+            <h2>Streams</h2>
+        </div>
+        <a class="btn" href="{{ url_for('streams') }}">View All</a>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Session</th><th>Started</th><th>Present</th><th>Absent</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for s in recent_streams %}
+                <tr>
+                    <td><a href="{{ url_for('stream_detail', stream_id=s.id) }}">{{ s.name }}</a></td>
+                    <td>{{ s.started_at }}</td>
+                    <td>{{ s.present_count or 0 }}</td>
+                    <td>{{ s.absent_count or 0 }}</td>
+                    <td>{% if s.is_open %}<span class="badge green">OPEN</span>{% else %}<span class="badge">CLOSED</span>{% endif %}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5" class="muted">No streams recorded yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
