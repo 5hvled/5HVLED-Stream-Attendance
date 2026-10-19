@@ -1,0 +1,40 @@
+name: Publish v1.0.0
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - release-trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build release ZIP
+        run: |
+          zip -r 5HVLED-Stream-Attendance-Complete-v1.0.zip \
+            INSTALL.bat \
+            installer.ps1 \
+            README-FIRST.txt \
+            App \
+            StreamerBot
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v1.0.0 >/dev/null 2>&1; then
+            gh release upload v1.0.0 5HVLED-Stream-Attendance-Complete-v1.0.zip --clobber
+          else
+            gh release create v1.0.0 \
+              5HVLED-Stream-Attendance-Complete-v1.0.zip \
+              --title "5HVLED Stream Attendance v1.0.0" \
+              --notes-file RELEASE_NOTES.md
+          fi
