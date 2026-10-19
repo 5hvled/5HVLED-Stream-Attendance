@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Audit Log — {{ brand_name }} Attendance{% endblock %}
+{% block content %}
+<section class="hero">
+    <div><div class="eyebrow">WHO TOUCHED WHAT</div><h1>Audit Log</h1></div>
+</section>
+<section class="card">
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Time</th><th>Action</th><th>Viewer</th><th>Stream</th><th>Details</th></tr></thead>
+            <tbody>
+            {% for l in logs %}
+                <tr>
+                    <td>{{ l.created_at }}</td>
+                    <td>{{ l.action }}</td>
+                    <td>{{ '@' + l.username if l.username else '—' }}</td>
+                    <td>{{ l.stream_name or '—' }}</td>
+                    <td>{{ l.details }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5" class="muted">Nothing logged yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
