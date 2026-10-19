@@ -1,0 +1,1 @@
+This folder is copied by INSTALL.bat to the current user's Documents\5HVLED-Attendance folder.
